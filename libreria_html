@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+ <html>
+ <head>
+     <title>Librería</title>
+     <meta charset='UTF-8'>
+     <style type="text/css">
+     	table, td, th {border:1px solid blue;}
+     	div.wraper{width: 500px;margin:auto}
+     	label{display: inline-block;width: 100px;}
+     	input[type='text'] {width: 300px;}
+        td {cursor:pointer;}
+        .idlibro {width: 50px;}
+        .titulo {width: 250px;}
+        .precio {width: 90px;}
+        #paginas {cursor:pointer;width: 450px;}
+        
+     </style>
+     <script type="text/javascript" src='https://code.jquery.com/jquery-3.2.1.min.js'></script>
+     <script type="text/javascript">
+        var pagina=1;
+     	//activar listeners 
+        window.onload = function() {
+            document.getElementById('alta').addEventListener('click', altaLibro);
+            document.getElementById('modificar').addEventListener('click', modifLibro);
+            document.getElementById('baja').addEventListener('click', borrarLibro);
+             //////opcion con listener con table y usando event.target  ////////
+            //activar listener sobre la etiqueta Table
+            document.getElementById('listalibros').addEventListener('click', function() {
+                //console.log (this);
+                //console.log (event.target);
+                //if (this!==event.target && event.target.tagName!='TH')  {
+                    if (event.target.tagName.toUpperCase()=='TD') {
+                        cargaLibro(event.target);
+                    }
+            })
+            
+            document.getElementById('modificar').style.display='none'; 
+            document.getElementById('baja').style.display='none'; 
+
+            //consultar libros // carga la lista de libros 
+            consultaLibros(1);
+
+        }
+
+        //alta de un  libro
+        function altaLibro() {
+            //alert ('altaLibro');
+            //recuperar datos
+            var titulo = document.getElementById('titulo').value;
+            var precio = document.getElementById('precio').value;
+
+            //validar datos (opcional)
+            if (titulo.trim() == '' || precio.trim() == '') {
+                alert('titulo y precio obligatorios');
+                return
+            }
+           
+            //peticiónn ajax al servidor
+            var datos = new FormData();
+            datos.append('opcion', 'A');
+            datos.append('titulo', titulo);
+            datos.append('precio', precio);
+            fetch('servidor/controlador.php', {
+                method: 'POST',
+                body: datos
+            })
+            .then (function(respuesta) {
+               //primera respuesta del servidor como que ha recibido la petición
+                if (respuesta.ok) {
+                    return respuesta.json();
+                } else {
+                    console.log(respuesta);
+                    throw "error en la llamada AJAX", 88;
+                }
+             })
+             .then (function (datos) {
+             	console.log(datos);
+             	//alert (datos);
+             	var control=datos;
+                if (control['codigo']!='00')  {
+                    throw control['mensaje'], control['codigo'];
+                }             	
+                document.getElementById('titulo').value="";
+                document.getElementById('precio').value="";
+                document.getElementById('alta').style.display='initial'; 
+                document.getElementById('modificar').style.display='none'; 
+                document.getElementById('baja').style.display='none'; 
+                //refrescar la lista de libros
+                consultaLibros(pagina); 
+                //muestra mensaje alta
+                alert (control['mensaje']);
+             }) 
+             .catch(function(error) {
+                alert (error);
+            }) 
+            
+        }
+
+        //consulta libros
+        function consultaLibros(pagina) {
+        	//alert ('consultaLibros');
+        	//borrado de la lista previa a la carga
+        	document.getElementById('listalibros').innerHTML="";
+        	 //peticiónn ajax al servidor
+            var datos = new FormData();
+            datos.append('opcion', 'C');
+            datos.append('pagina', pagina);
+        	fetch ('servidor/controlador.php', {
+        		method: 'POST',
+        		body: datos
+        	})
+        	.then (function(respuesta) {
+        		if (respuesta.ok) {
+                    return respuesta.json();
+                } else {
+                    console.log(respuesta);
+                    throw "error en la llamada AJAX", 88;
+                }
+		   	})
+        	.then (function(datos) {
+        		//console.log(datos);
+        		//alert (datos[1]);
+        		var control=datos[0];
+                if (control['codigo']!='00')  {
+                    throw control['mensaje'], control['codigo'];
+                }
+                var libros = datos[1];
+        		mostrarLibros(libros);
+                //montar los enlaces de paginación
+                paginas=datos[2];
+
+                mostrarPaginas(paginas);
+        	})
+        	.catch (function(error) {
+        		alert (error);
+
+        	})
+        }
+
+        //carga la lista de libros en el formulario / table
+        function mostrarLibros(libros) {
+        	//alert (libros);
+        	var tabla="<tr><th>Id</th><th>Título</th><th>Precio</th></tr>";
+        	for (i in libros) {
+				tabla+="<tr class='tr'>";
+					tabla+=`<td class='idlibro' style='width:30px'>${libros[i]['idlibros']}</td>`;
+					tabla+=`<td class='idtitulo' style='width:350px'>${libros[i]['titulo']}</td>`;
+					tabla+=`<td class='idprecio' style='width:70px'>${libros[i]['precio']}</td>`;
+				tabla+="</tr>";
+			}
+			document.getElementById('listalibros').innerHTML=tabla;
+
+/*          /////////////////     opcion tradicional //////////////////////////////
+           //modelo tradicional o mas común realizado en clase
+            //buscar la etiqueta td con el class idlibros
+			//se activa por cada linea de registro ('tr') class='tr' un listener
+			var fila=document.querySelectorAll('.tr');
+			for (i=0;i<fila.length;i++) {
+				fila[i].addEventListener('click', cargaLibro);
+				fila[i].style.cursor="pointer";
+			}
+
+*/
+    	}
+
+/*
+        //////////////////     opcion tradicional //////////////////////////////
+    	function cargaLibro() {
+    		alert ('cargaLibro');
+
+            //modelo tradicional o mas común realizado en clase
+            //buscar la etiqueta td con el class idlibros
+            var id = this.querySelector('td.idlibro').innerText;
+            var titulo = this.querySelector('td.idtitulo').innerText;
+            var precio = this.querySelector('td.idprecio').innerText;
+            document.getElementById('idlibro').value=id;
+            document.getElementById('titulo').value=titulo;
+            document.getElementById('precio').value=precio;
+        }   
+*/
+
+        //montar los listener 
+        function mostrarPaginas(paginas) {
+            var enlaces = '';
+            for (i=1; i <= paginas; i++) {
+                if (i==pagina) {
+                    enlaces+= "<span style='font-weight:bold; font-size:large;'>" + i + "</span>&nbsp&nbsp&nbsp ";
+                } else {
+                    enlaces+= "<span> " + i + "</span>&nbsp&nbsp&nbsp ";
+                }
+                
+            }
+            document.getElementById('paginas').innerHTML = enlaces;
+            //activar los listener para la paginación (id + span)
+            var span=document.querySelectorAll('#paginas span');
+
+            for (i=0; i<span.length; i++) {
+                span[i].addEventListener('click', function() {
+                    //recuperar el número de página 
+                    pagina=this.innerText;
+                    //llamar a la función consultarLibros
+                    consultaLibros(pagina);
+                })
+            }
+        } 
+        
+
+
+         //////opcion con listener con table y usando event.target  ////////
+        function cargaLibro(td) {
+            //alert ('cargaLibro');
+            console.log (td);
+            var id = td.closest('tr').querySelector('td.idlibro').innerText;
+            var titulo = td.closest('tr').querySelector('td.idtitulo').innerText;
+            var precio = td.closest('tr').querySelector('td.idprecio').innerText;
+            document.getElementById('idlibro').value=id;
+            document.getElementById('titulo').value=titulo;
+            document.getElementById('precio').value=precio;
+            document.getElementById('alta').style.display='initial'; 
+            document.getElementById('modificar').style.display='initial'; 
+            document.getElementById('baja').style.display='initial'; 
+
+        }   
+
+
+        //modificación de un libro
+        function modifLibro() {
+            //alert ('modifLibro');
+            
+            
+            var idlibro = document.getElementById('idlibro').value;
+            var titulo = document.getElementById('titulo').value;
+            var precio = document.getElementById('precio').value;
+
+            //validar datos (opcional)
+            if (titulo.trim() == '' || precio.trim() == '' || idlibro.trim() == '') {
+                alert('idlibro, titulo y precio obligatorios');
+                return
+            }
+
+            var datos = new FormData();
+            datos.append('opcion', 'M');
+            datos.append('idlibro', idlibro);
+            datos.append('titulo', titulo);
+            datos.append('precio', precio);
+            fetch ('servidor/controlador.php', {
+                method: 'POST',
+                body: datos
+            })
+            .then (function(respuesta) {
+                if (respuesta.ok) {
+                    return respuesta.json();
+                } else {
+                    console.log(respuesta);
+                    throw "error en la llamada AJAX", 88;
+                }
+            })
+            .then (function(datos) {
+                //alert(datos);
+                console.log(datos);
+                var control=datos;
+                if (control['codigo']!='00' && control['codigo']!='10')  {
+                    throw control['mensaje'], control['codigo'];
+                }
+                
+                if (control['codigo']=='00') {
+                    document.getElementById('idlibro').value="";
+                    document.getElementById('titulo').value="";
+                    document.getElementById('precio').value="";
+                    document.getElementById('alta').style.display='initial'; 
+                    document.getElementById('modificar').style.display='none'; 
+                    document.getElementById('baja').style.display='none'; 
+
+                }
+
+
+                alert (control['mensaje']); 
+                //refrescar la lista de libros
+                consultaLibros(pagina); 
+
+            })
+            .catch (function(error) {
+                alert (error);
+
+            })
+
+        }  
+
+        //baja de un libro
+        function borrarLibro() {
+            //alert ('borrarLibro');
+            var idlibro = document.getElementById('idlibro').value;
+             if (idlibro.trim() == '') {
+                alert('seleccionar un libro previamente');
+                return
+            }
+            
+            var datos = new FormData();
+            datos.append('opcion', 'D');
+            datos.append('idlibro', idlibro);
+           
+            fetch ('servidor/controlador.php', {
+                method: 'POST',
+                body: datos
+            })
+            .then (function(respuesta) {
+                if (respuesta.ok) {
+                    return respuesta.json();
+                } else {
+                    console.log(respuesta);
+                    throw "error en la llamada AJAX", 88;
+                }
+            })
+            .then (function(datos) {
+                //alert(datos);
+                console.log(datos);
+                var control=datos;
+                if (control['codigo']!='00')  {
+                    throw control['mensaje'], control['codigo'];
+                }
+                alert (control['mensaje']); 
+                document.getElementById('idlibro').value="";
+                document.getElementById('titulo').value="";
+                document.getElementById('precio').value="";
+                document.getElementById('alta').style.display='initial'; 
+                document.getElementById('modificar').style.display='none'; 
+                document.getElementById('baja').style.display='none'; 
+                //refrescar la lista de libros
+                consultaLibros(pagina); 
+
+            })
+            .catch (function(error) {
+                alert (error);
+
+            })
+
+        }
+
+     </script>
+ </head>
+ <body>
+ 	<div class='wraper'>
+     	<form>
+     		<input type="hidden" name="idlibro" id='idlibro'/>
+    		<label>Título: </label><input type="text" maxlenght="100" name="titulo" id="titulo"/><br><br>
+    		<label>Precio: </label><input type="number" maxlenght="5" name="precio" id="precio" /><br><br>
+    		<input type="button" id="alta" value="Alta Libro" /> 
+    		<input type="button" id="modificar" value="Modificar" /> 
+    		<input type="button" id="baja" value="Baja libro" />
+    	</form><br><br>
+        <table  id='listalibros'></table>
+        <center id='paginas'></center>   
+	</div>
+</body>
+</html> 
